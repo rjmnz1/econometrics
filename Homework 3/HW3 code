@@ -1,0 +1,70 @@
+young <- d_HHP2020_24 %>%
+  filter(Age <= 25, !is.na(income_midpoint)) %>%
+  mutate(
+    income_group = ifelse(income_midpoint > median(income_midpoint, na.rm = TRUE),
+                          "High Income", "Low Income"),
+    Mar_Stat = tolower(Mar_Stat),
+    Mar_Stat = ifelse(grepl("married", Mar_Stat), "Married", "Never")
+  )
+ggplot(young, aes(x = Education, fill = Mar_Stat)) +
+  geom_bar(position = "fill") +
+  facet_wrap(~income_group) +
+  scale_y_continuous(labels = scales::percent) +
+  labs(
+    title = "Marital Status by Education and Income (Age ≤ 25)",
+    x = "Education Level",
+    y = "Percent",
+    fill = "Marital Status"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+------
+young <- d_HHP2020_24 %>%
+  filter(Age <= 25,
+         !is.na(income_midpoint),
+         !is.na(Mar_Stat),
+         !is.na(Education),
+         !is.na(Gender)) %>%
+  mutate(
+    income_group = ifelse(income_midpoint > median(income_midpoint, na.rm = TRUE),
+                          "High Income", "Low Income"),
+    Mar_Stat = tolower(Mar_Stat),
+    partner_status = case_when(
+      grepl("married|partner", Mar_Stat) ~ "Partnered",
+      grepl("never|single|divorced|separated|widowed", Mar_Stat) ~ "Not Partnered",
+      TRUE ~ NA
+    ),
+    Gender = case_when(
+      tolower(Gender) %in% c("female","f","woman") ~ "Female",
+      tolower(Gender) %in% c("male","m","man") ~ "Male",
+      TRUE ~ "Other"
+    )
+  ) %>%
+  filter(!is.na(partner_status))
+ggplot(young, aes(x = Education, fill = partner_status)) +
+  geom_bar(position = "fill") +
+  facet_grid(Gender ~ income_group) +
+  scale_y_continuous(labels = scales::percent) +
+  scale_fill_manual(values = c("Partnered" = "#FF69B4",   # pink
+                               "Not Partnered" = "#B0B0B0")) +  # gray
+  labs(
+    title = "Partnered vs Not Partnered by Education, Income, and Gender (Age ≤ 25)",
+    x = "Education Level",
+    y = "Percent",
+    fill = "Relationship Status"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+----------
+  library(lubridate)
+d_HHP2020_24 %>%
+  filter(Age <= 25, !is.na(ANXIOUS)) %>%
+  mutate(week = floor_date(Begin_Date, "week")) %>%
+  group_by(week) %>%
+  summarise(mean_anx = mean(ANXIOUS, na.rm = TRUE), .groups = "drop") %>%
+  ggplot(aes(x = week, y = mean_anx)) +
+  geom_line(color = "orange", size = 1.2) +
+  geom_point() +
+  labs(title = "Weekly Average Anxiety (Age ≤ 25)",
+       x = NULL, y = "Mean Anxious score (0–4)") +
+  theme_minimal()
