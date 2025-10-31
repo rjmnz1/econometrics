@@ -1,0 +1,107 @@
+Econometrics - Homework #6
+
+10.30.2025
+1) Group Members:
+•	Federico Ciandri,
+•	Romulo Jimenez 
+•	Marwan Kenaw
+
+# Lab 6
+
+library(ggplot2)
+library(tidyverse)
+library(haven)
+
+
+load("~/Desktop/Econometrics/Data Visualization/ACS_2021_couples.RData")
+acs2021_couples$age_diff <- acs2021_couples$AGE - acs2021_couples$h_age
+
+summary(acs2021_couples$age_diff[(acs2021_couples$SEX == "Female")&(acs2021_couples$h_sex == "Male")])
+summary(acs2021_couples$age_diff[(acs2021_couples$SEX == "Male")&(acs2021_couples$h_sex == "Female")])
+summary(acs2021_couples$age_diff[(acs2021_couples$SEX == "Male")&(acs2021_couples$h_sex == "Male")])
+summary(acs2021_couples$age_diff[(acs2021_couples$SEX == "Female")&(acs2021_couples$h_sex == "Female")])
+
+summary(acs2021_couples$AGE[(acs2021_couples$SEX == "Female")&(acs2021_couples$h_sex == "Male")])
+summary(acs2021_couples$h_age[(acs2021_couples$SEX == "Female")&(acs2021_couples$h_sex == "Male")])
+
+acs2021_couples$educ_numeric <- fct_recode(acs2021_couples$EDUC,
+                                           "0" = "N/A or no schooling",
+                                           "2" = "Nursery school to grade 4",
+                                           "6.5" = "Grade 5, 6, 7, or 8",
+                                           "9" = "Grade 9",
+                                           "10" = "Grade 10",
+                                           "11" = "Grade 11",
+                                           "12" = "Grade 12",
+                                           "13" = "1 year of college",
+                                           "14" = "2 years of college",
+                                           "15" = "3 years of college",
+                                           "16" = "4 years of college",
+                                           "17" = "5+ years of college")
+
+acs2021_couples$educ_numeric <- as.numeric(levels(acs2021_couples$educ_numeric))[acs2021_couples$educ_numeric]
+
+acs2021_couples$h_educ_numeric <- fct_recode(acs2021_couples$h_educ,
+                                             "0" = "N/A or no schooling",
+                                             "2" = "Nursery school to grade 4",
+                                             "6.5" = "Grade 5, 6, 7, or 8",
+                                             "9" = "Grade 9",
+                                             "10" = "Grade 10",
+                                             "11" = "Grade 11",
+                                             "12" = "Grade 12",
+                                             "13" = "1 year of college",
+                                             "14" = "2 years of college",
+                                             "15" = "3 years of college",
+                                             "16" = "4 years of college",
+                                             "17" = "5+ years of college")
+
+acs2021_couples$h_educ_numeric <- as.numeric(levels(acs2021_couples$h_educ_numeric))[acs2021_couples$h_educ_numeric]
+
+acs_subgroup <- acs2021_couples %>% filter((AGE >= 25) & (AGE <= 55) & 
+                                             (LABFORCE == 2) 
+                                           & (WKSWORK2 > 4) 
+                                           & (UHRSWORK >= 35) )
+
+library(AER)
+
+m1 <- lm(age_diff ~ educ_diff, 
+         data = acs2021_couples)
+
+m2 <- lm(age_diff ~ educ_diff + I(educ_diff^2) + I(educ_diff^3), 
+         data = acs2021_couples)
+
+coeftest(m1, vcov = vcovHC)
+
+## 
+## t test of coefficients:
+## 
+##               Estimate Std. Error   t value Pr(>|t|)    
+## (Intercept) -0.7556547  0.0072612 -104.0678   <2e-16 ***
+## educ_diff    0.0072887  0.0041757    1.7455   0.0809 .  
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+waldtest(m1, m2, vcov = vcovHC)
+
+## Wald test
+## 
+## Model 1: age_diff ~ educ_diff
+## Model 2: age_diff ~ educ_diff + I(educ_diff^2) + I(educ_diff^3)
+##   Res.Df Df     F    Pr(>F)    
+## 1 776062                       
+## 2 776060  2 368.8 < 2.2e-16 ***
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+library(modelsummary)
+
+models <- list(
+  "M 1" = lm(age_diff ~ educ_diff, data = acs2021_couples),
+  "M 2" = lm(age_diff ~ educ_diff + I(educ_diff^2) + I(educ_diff^3), data = acs2021_couples) ) 
+
+modelsummary(models, stars = TRUE)
+
+2) Conclusion
+We analyzed how education differences between partners relate to age gaps using 2021 ACS couples data. 
+After calculating age_diff and converting education levels into numeric values, we focused on working-age individuals employed full-time.
+We then estimated two models: one with a linear education difference (m1) and another adding squared and cubic terms (m2). 
+The linear effect was weakly positive, but the Wald test showed that the nonlinear model fit significantly better, suggesting a more complex relationship between education and age differences among couples.
