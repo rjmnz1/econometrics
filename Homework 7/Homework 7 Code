@@ -188,3 +188,8 @@ ggplot(same_state_gap20, aes(x = reorder(BPL, count), y = count, fill = count)) 
 +     ) +
 +     scale_fill_gradient(low = "skyblue", high = "darkblue") +
 +     theme_minimal()
+
+
+
+
+This analysis examined how age and education differences vary among married couples across the United States using the 2021 ACS dataset. After calculating each couple’s age gap and filtering for traditional male–female pairs, several regression models were estimated to explore how education levels and geography relate to large husband-older age gaps. The results showed that higher female education generally corresponds with smaller age differences, even after controlling for state or region. Scatterplots and cubic regression fits revealed only weak, nonlinear links between educational and age differences, suggesting that while education plays some role, its impact is limited. Additional analysis identified where extreme 20+ year age gaps are most common, largely in populous states like California, New York, and Texas, and showed that average husband–wife age gaps vary modestly by state, typically ranging from two to three years. Hypothesis tests, including t-tests, F-tests, and chi-squared tests, were used to confirm whether these relationships were statistically significant, supporting the conclusion that demographic and educational factors influence, but do not solely determine, marital age gaps in the U.S.
