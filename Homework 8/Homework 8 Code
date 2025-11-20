@@ -1,0 +1,168 @@
+Econometrics - Homework #7
+11.13.2025
+
+1) Group Members:
+• Romulo Jimenez 
+• Federico Ciandri
+• Marwan Kenaw
+
+# Lab 8 - In class coding
+# In this lab, I compared three prediction methods—OLS, logit, and probit—to model whether the husband is more than five years older than his spouse. 
+# I used the same set of predictors (education categories and age) across all models and evaluated performance using confusion matrices, subgroup accuracy, ROC curves, and AIC/BIC. 
+# I also extended the logit model by adding an additional control (race) to test whether new features improve predictive power.
+
+ols_out1 <- lm(he_more_than_5yrs_than_her ~ educ_hs + educ_somecoll + educ_college + educ_advdeg + AGE, data = trad_data)
+
+pred_vals_ols1 <- predict(ols_out1, trad_data)
+pred_model_ols1 <- (pred_vals_ols1 > mean(pred_vals_ols1))
+table(pred = pred_model_ols1, true = trad_data$he_more_than_5yrs_than_her)
+
+##        true
+## pred         0      1
+##   FALSE 180783  35078
+##   TRUE  150394  46020
+
+model_logit1 <- glm(he_more_than_5yrs_than_her ~ educ_hs + educ_somecoll + educ_college + educ_advdeg + AGE, data = trad_data, family = binomial)
+summary(model_logit1)
+
+## 
+## Call:
+## glm(formula = he_more_than_5yrs_than_her ~ educ_hs + educ_somecoll + 
+##     educ_college + educ_advdeg + AGE, family = binomial, data = trad_data)
+## 
+## Coefficients:
+##                 Estimate Std. Error z value Pr(>|z|)    
+## (Intercept)   -0.2637952  0.0186745  -14.13   <2e-16 ***
+## educ_hs       -0.2825620  0.0151416  -18.66   <2e-16 ***
+## educ_somecoll -0.3815243  0.0160547  -23.76   <2e-16 ***
+## educ_college  -0.6128375  0.0161218  -38.01   <2e-16 ***
+## educ_advdeg   -0.6760222  0.0173786  -38.90   <2e-16 ***
+## AGE           -0.0140343  0.0002452  -57.23   <2e-16 ***
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+## (Dispersion parameter for binomial family taken to be 1)
+## 
+##     Null deviance: 408816  on 412274  degrees of freedom
+## Residual deviance: 403701  on 412269  degrees of freedom
+## AIC: 403713
+## 
+## Number of Fisher Scoring iterations: 4
+
+pred_vals <- predict(model_logit1, trad_data, type = "response")
+pred_model_logit1 <- (pred_vals > mean(pred_vals))
+table(pred = pred_model_logit1, true = trad_data$he_more_than_5yrs_than_her)
+
+##        true
+## pred         0      1
+##   FALSE 191616  37461
+##   TRUE  139561  43637
+
+# Homework Lab 8
+# OLS
+ols_out1 <- lm(he_more_than_5yrs_than_her ~ educ_hs + educ_somecoll +
+                 educ_college + educ_advdeg + AGE,
+               data = trad_data)
+
+# Logit
+model_logit1 <- glm(he_more_than_5yrs_than_her ~ educ_hs + educ_somecoll +
+                      educ_college + educ_advdeg + AGE,
+                    data = trad_data, family = binomial(link = "logit"))
+
+# Probit
+model_probit1 <- glm(he_more_than_5yrs_than_her ~ educ_hs + educ_somecoll +
+                       educ_college + educ_advdeg + AGE,
+                     data = trad_data, family = binomial(link = "probit"))
+
+# Now we want a nicer regression table
+library(modelsummary)
+
+modelsummary(
+  list("OLS" = ols_out1, "Logit" = model_logit1, "Probit" = model_probit1),
+  statistic = "({std.error})",
+  stars = TRUE
+)
+
+evaluate_binary <- function(probs, truth, cutoff = 0.5) {
+  pred <- probs > cutoff
+  tab <- table(pred = pred, true = truth)
+  
+  # make sure table has both 0 and 1 in both dims
+  tn <- tab["FALSE", "0"]
+  fp <- tab["TRUE",  "0"]
+  fn <- tab["FALSE", "1"]
+  tp <- tab["TRUE",  "1"]
+  
+  accuracy   <- (tp + tn) / (tp + tn + fp + fn)
+  false_pos  <- fp / (fp + tn)
+  false_neg  <- fn / (fn + tp)
+  
+  list(
+    cutoff     = cutoff,
+    confusion  = tab,
+    accuracy   = accuracy,
+    false_pos  = false_pos,
+    false_neg  = false_neg
+  )
+}
+
+# Notice: OLS gives fitted values, logit & probit give probabilities
+ols_prob    <- predict(ols_out1, trad_data)          # can be <0 or >1 but still usable
+logit_prob  <- predict(model_logit1, trad_data, type = "response")
+probit_prob <- predict(model_probit1, trad_data, type = "response")
+y_true      <- trad_data$he_more_than_5yrs_than_her
+
+trad_data$logit_prob   <- logit_prob
+trad_data$logit_pred50 <- logit_prob > 0.5
+
+library(dplyr)
+
+subgroup_perf <- trad_data %>%
+  group_by(educ_hs) %>%  # change this grouping to other variables as needed
+  summarise(
+    n          = n(),
+    accuracy   = mean(logit_pred50 == he_more_than_5yrs_than_her),
+    false_pos  = mean(logit_pred50 == 1 & he_more_than_5yrs_than_her == 0),
+    false_neg  = mean(logit_pred50 == 0 & he_more_than_5yrs_than_her == 1)
+  )
+
+subgroup_perf
+
+install.packages("pROC")
+
+library(pROC)
+
+roc_ols    <- roc(y_true, ols_prob)
+roc_logit  <- roc(y_true, logit_prob)
+roc_probit <- roc(y_true, probit_prob)
+
+plot(roc_logit, main = "ROC Curves: OLS vs Logit vs Probit")
+lines(roc_probit, lty = 2)
+lines(roc_ols, lty = 3)
+
+legend("bottomright",
+       legend = c(
+         paste0("Logit (AUC = ", round(auc(roc_logit), 3), ")"),
+         paste0("Probit (AUC = ", round(auc(roc_probit), 3), ")"),
+         paste0("OLS (AUC = ", round(auc(roc_ols), 3), ")")
+       ),
+       lty = c(1, 2, 3))
+
+# Baseline logit
+logit_base <- glm(he_more_than_5yrs_than_her ~ educ_hs + educ_somecoll +
+                    educ_college + educ_advdeg + AGE,
+                  data = trad_data, family = binomial)
+
+# Extended logit with extra controls (replace X1, X2 with real var names)
+logit_ext <- glm(he_more_than_5yrs_than_her ~ educ_hs + educ_somecoll +
+                   educ_college + educ_advdeg + AGE + RACE,
+                 data = trad_data, family = binomial)
+
+AIC(logit_base, logit_ext)
+BIC(logit_base, logit_ext)
+
+# Conclusion
+# Overall, the logit and probit models outperform OLS for this binary outcome, producing higher accuracy and better ROC/AUC scores. 
+# Education levels and age consistently predict the likelihood of a large age gap, while additional variables such as race contribute little improvement. 
+# Subgroup analysis shows that prediction quality varies across demographic groups, indicating the model is “more confused” in some populations. 
+# Finally, because education and age are not exogenous, the results should be interpreted as predictive associations rather than causal effects.
